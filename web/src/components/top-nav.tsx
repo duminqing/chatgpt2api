@@ -6,11 +6,12 @@ import { Menu } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { HeaderActions } from "@/components/header-actions";
+import { LoginCredentialsForm } from "@/components/login-credentials-form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import webConfig from "@/constants/common-env";
-import { fetchThirdPartyApps, type ThirdPartyAppsSettings } from "@/lib/api";
+import { fetchThirdPartyApps, logout, type ThirdPartyAppsSettings } from "@/lib/api";
 import { getValidatedAuthSession } from "@/lib/auth-session";
 import { cn } from "@/lib/utils";
 import { clearStoredAuthSession, type StoredAuthSession } from "@/store/auth";
@@ -44,6 +45,7 @@ export function TopNav() {
   const [session, setSession] = useState<StoredAuthSession | null | undefined>(undefined);
   const [thirdPartyApps, setThirdPartyApps] = useState<ThirdPartyAppsSettings | null>(null);
   const [isCanvasDialogOpen, setIsCanvasDialogOpen] = useState(false);
+  const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -54,6 +56,7 @@ export function TopNav() {
           return;
         }
         setSession(null);
+        setIsAccountDialogOpen(false);
         return;
       }
 
@@ -99,6 +102,7 @@ export function TopNav() {
   }, [session]);
 
   const handleLogout = async () => {
+    await logout().catch(() => undefined);
     await clearStoredAuthSession();
     router.replace("/login");
   };
@@ -170,6 +174,9 @@ export function TopNav() {
                   })}
                 </nav>
                 <SheetFooter>
+                  <SheetClose asChild>
+                    <Button type="button" variant="outline" onClick={() => setIsAccountDialogOpen(true)}>账户设置</Button>
+                  </SheetClose>
                   <button
                     type="button"
                     className="rounded-xl border border-stone-200 px-3 py-2.5 text-left text-sm font-medium text-stone-500 transition hover:text-stone-950 dark:border-white/10 dark:text-stone-300 dark:hover:text-white"
@@ -219,6 +226,9 @@ export function TopNav() {
           </nav>
           <div className="hidden items-center justify-end gap-2 sm:flex sm:gap-3">
             <HeaderActions />
+            <button type="button" className="shrink-0 py-1 text-xs text-stone-500 hover:text-stone-900 dark:text-stone-300 sm:text-sm" onClick={() => setIsAccountDialogOpen(true)}>
+              账户设置
+            </button>
             <span className="hidden rounded-md bg-stone-100 px-2 py-1 text-[10px] font-medium text-stone-500 dark:bg-white/8 dark:text-stone-300 sm:inline-block sm:text-[11px]">
               {roleLabel} · {displayName}
             </span>
@@ -232,6 +242,15 @@ export function TopNav() {
           </div>
         </div>
       </header>
+      <Dialog open={isAccountDialogOpen} onOpenChange={setIsAccountDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle>账户设置</DialogTitle>
+            <DialogDescription>为当前登录用户设置可选的账号密码登录。</DialogDescription>
+          </DialogHeader>
+          <LoginCredentialsForm />
+        </DialogContent>
+      </Dialog>
       <Dialog open={isCanvasDialogOpen} onOpenChange={setIsCanvasDialogOpen}>
         <DialogContent showCloseButton={false} className="rounded-2xl p-6">
           <DialogHeader className="gap-2">

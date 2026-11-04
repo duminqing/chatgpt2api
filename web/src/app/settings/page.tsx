@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import { LoaderCircle } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { LoginCredentialsForm } from "@/components/login-credentials-form";
 import { useAuthGuard } from "@/lib/use-auth-guard";
 
 import { BackupSettingsCard } from "./components/backup-settings-card";
@@ -22,7 +24,7 @@ import { useSettingsStore } from "./store";
 const settingsTabs = [
   { value: "basic", title: "基础配置" },
   { value: "backup", title: "备份" },
-  { value: "keys", title: "用户密钥" },
+  { value: "keys", title: "登录与密钥" },
   { value: "api-docs", title: "接口接入" },
   { value: "canvas", title: "画布入口" },
   { value: "proxy", title: "FlareSolverr" },
@@ -98,7 +100,13 @@ function SettingsPageContent() {
         <TabsContent value="backup">
           <BackupSettingsCard />
         </TabsContent>
-        <TabsContent value="keys">
+        <TabsContent value="keys" className="space-y-4">
+          <Card className="rounded-2xl border-white/80 bg-white/90 shadow-sm">
+            <CardContent className="max-w-xl space-y-4 p-6">
+              <h2 className="text-lg font-semibold tracking-tight">我的登录账号（可选）</h2>
+              <LoginCredentialsForm />
+            </CardContent>
+          </Card>
           <UserKeysCard />
         </TabsContent>
         <TabsContent value="canvas">

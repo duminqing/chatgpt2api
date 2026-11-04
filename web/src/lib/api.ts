@@ -315,6 +315,8 @@ export type UserKey = {
   name: string;
   role: "user";
   enabled: boolean;
+  username: string;
+  has_password: boolean;
   created_at: string | null;
   last_used_at: string | null;
 };
@@ -329,6 +331,35 @@ export async function login(authKey: string) {
     },
     redirectOnUnauthorized: false,
   });
+}
+
+export async function loginWithPassword(username: string, password: string) {
+  return httpRequest<LoginResponse & { session_token: string; expires_in: number }>("/auth/password-login", {
+    method: "POST",
+    body: { username: username.trim(), password },
+    redirectOnUnauthorized: false,
+  });
+}
+
+export type LoginCredentials = { username: string; configured: boolean };
+
+export async function fetchLoginCredentials() {
+  return httpRequest<LoginCredentials>("/auth/credentials");
+}
+
+export async function saveLoginCredentials(username: string, password: string) {
+  return httpRequest<LoginCredentials>("/auth/credentials", {
+    method: "POST",
+    body: { username: username.trim(), password },
+  });
+}
+
+export async function removeLoginCredentials() {
+  return httpRequest<LoginCredentials>("/auth/credentials", { method: "DELETE" });
+}
+
+export async function logout() {
+  return httpRequest<{ ok: boolean }>("/auth/logout", { method: "POST", redirectOnUnauthorized: false });
 }
 
 export async function fetchAccounts() {

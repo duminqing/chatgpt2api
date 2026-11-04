@@ -5,9 +5,10 @@ from urllib.parse import quote
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from api.support import require_admin, require_identity, resolve_image_base_url
+from api.support import extract_bearer_token, require_admin, require_identity, resolve_image_base_url
+from services.auth_service import LoginRateLimitError, SESSION_TTL_SECONDS, auth_service
 from services.backup_service import BackupError, backup_service
 from services.config import config
 from services.image_service import (
@@ -29,6 +30,11 @@ from services.proxy_service import proxy_settings, test_clearance, test_proxy
 
 class SettingsUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="allow")
+
+
+class PasswordLoginRequest(BaseModel):
+    username: str = Field(max_length=64)
+    password: str = Field(max_length=1024)
 
 
 class ProxyTestRequest(BaseModel):
@@ -71,6 +77,46 @@ def create_router(app_version: str) -> APIRouter:
             "subject_id": identity.get("id"),
             "name": identity.get("name"),
         }
+
+    @router.post("/auth/password-login")
+    async def password_login(body: PasswordLoginRequest, request: Request):
+        client_id = request.client.host if request.client else "unknown"
+        try:
+            result = await run_in_threadpool(auth_service.login_with_password, body.username, body.password, client_id)
+        except LoginRateLimitError as exc:
+            raise HTTPException(status_code=429, detail={"error": str(exc)}, headers={"Retry-After": str(exc.retry_after)}) from exc
+        if result is None:
+            raise HTTPException(status_code=401, detail={"error": "用户名或密码错误，或账号已被禁用"})
+        identity, session_token = result
+        return {
+            "ok": True, "version": app_version, "role": identity["role"],
+            "subject_id": identity["id"], "name": identity["name"],
+            "session_token": session_token, "expires_in": SESSION_TTL_SECONDS,
+        }
+
+    @router.get("/auth/credentials")
+    async def get_login_credentials(authorization: str | None = Header(default=None)):
+        identity = require_identity(authorization)
+        return await run_in_threadpool(auth_service.get_login_credentials, str(identity["id"]))
+
+    @router.post("/auth/credentials")
+    async def set_login_credentials(body: PasswordLoginRequest, authorization: str | None = Header(default=None)):
+        identity = require_identity(authorization)
+        try:
+            return await run_in_threadpool(auth_service.set_login_credentials, identity, body.username, body.password)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail={"error": str(exc)}) from exc
+
+    @router.delete("/auth/credentials")
+    async def remove_login_credentials(authorization: str | None = Header(default=None)):
+        identity = require_identity(authorization)
+        await run_in_threadpool(auth_service.remove_login_credentials, str(identity["id"]))
+        return {"username": "", "configured": False}
+
+    @router.post("/auth/logout")
+    async def logout(authorization: str | None = Header(default=None)):
+        await run_in_threadpool(auth_service.logout, extract_bearer_token(authorization))
+        return {"ok": True}
 
     @router.get("/version")
     async def get_version():

@@ -182,7 +182,7 @@ export function UserKeysCard() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold tracking-tight">用户密钥管理</h2>
-                <p className="text-sm text-stone-500">为普通用户创建专用密钥；普通用户只能进入画图页，不能查看设置和号池。</p>
+                <p className="text-sm text-stone-500">为普通用户创建专用密钥；用户可自愿绑定账号密码，权限仍限于画图页。</p>
               </div>
             </div>
             <Button className="h-9 rounded-xl bg-stone-950 px-4 text-white hover:bg-stone-800" onClick={() => setIsDialogOpen(true)}>
@@ -231,6 +231,7 @@ export function UserKeysCard() {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
+                        <span>登录账号 {item.has_password ? item.username : "未绑定（可选）"}</span>
                         <span>创建时间 {formatDateTime(item.created_at)}</span>
                         <span>最近使用 {formatDateTime(item.last_used_at)}</span>
                       </div>
@@ -327,7 +328,7 @@ export function UserKeysCard() {
           <DialogHeader className="gap-2">
             <DialogTitle>删除用户密钥</DialogTitle>
             <DialogDescription className="text-sm leading-6">
-              确认删除用户密钥「{deletingItem?.name}」吗？删除后该密钥将无法继续调用接口。
+              确认删除用户密钥「{deletingItem?.name}」吗？删除后该用户的密钥和已绑定的账号密码登录均会失效。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
