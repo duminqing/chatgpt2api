@@ -50,7 +50,7 @@
 ### Docker 运行
 
 ```bash
-git clone git@github.com:basketikun/chatgpt2api.git
+git clone https://github.com/duminqing/chatgpt2api.git
 cd chatgpt2api
 docker compose up -d
 ```
@@ -99,7 +99,7 @@ docker compose -f docker-compose.warp.yml up -d --build
 启动后端：
 
 ```bash
-git clone git@github.com:basketikun/chatgpt2api.git
+git clone https://github.com/duminqing/chatgpt2api.git
 cd chatgpt2api
 uv sync
 uv run main.py
@@ -113,14 +113,36 @@ bun install
 bun run dev
 ```
 
-后续更新新版本：
+### 自动构建镜像与服务器更新
+
+向本仓库的 `main` 分支推送提交后，GitHub Actions 的「Publish Docker Image」工作流会自动构建 AMD64 / ARM64 镜像，并发布到：
+
+```text
+ghcr.io/duminqing/chatgpt2api:latest
+```
+
+推送 `v*` 版本标签也会触发发布；此外可在 Actions 中手动运行工作流，选择 `main` 分支以更新 `latest`。每次构建还会发布 `sha-<提交短哈希>` 标签，版本发布保留对应的版本号标签。
+
+首次使用时，请在仓库的 Actions 页面确认工作流已启用。工作流使用 GitHub 自动提供的 `GITHUB_TOKEN` 发布镜像，无需额外配置 Docker Hub 密钥。GHCR 首次发布的包默认为私有；如需服务器免登录拉取，请在 GitHub 的 Packages → `chatgpt2api` → Package settings 中将可见性改为 Public；保留私有时，服务器需使用具有 `read:packages` 权限的 personal access token (classic) 登录 `ghcr.io`。[GHCR 权限与认证说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
+
+服务器首次从原作者镜像切换时，在项目目录拉取本仓库的新配置，确认 `origin` 指向 `https://github.com/duminqing/chatgpt2api.git`：
 
 ```bash
-docker pull ghcr.io/basketikun/chatgpt2api:latest
-docker-compose down
-docker-compose up -d
-
+git remote -v
+git pull --ff-only origin main
 ```
+
+等待 GitHub Actions 构建成功后，在服务器执行：
+
+```bash
+docker compose -f docker-compose.yml pull app
+docker compose -f docker-compose.yml up -d --no-build app
+docker compose -f docker-compose.yml logs --tail=100 app
+```
+
+以后每次更新只需等待构建成功，再执行上述 Docker 命令，无需在服务器重新构建。显式指定 `docker-compose.yml`，可避免先前源码构建覆盖文件的影响。容器继续使用现有的 `./data` 和 `./config.json` 挂载；发布镜像内只带空配置，不包含构建机器的部署配置。
+
+以上拉取方式对应默认 `docker-compose.yml`；`docker-compose.local.yml` 和 `docker-compose.warp.yml` 仍保留源码构建方式。
 
 ### 存储后端配置
 
